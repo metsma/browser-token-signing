@@ -23,6 +23,11 @@ document.addEventListener("DOMContentLoaded", function(event) {
         console.log(event.message);
         window.postMessage(event.message, '*');
     });
+    safari.self.addEventListener("ping", function(event) {
+        console.log(event.name);
+        console.log(event.message);
+        safari.extension.dispatchMessage("pong", event.data);
+    });
 });
 
 // Forward the message from page.js to background.js
@@ -86,7 +91,6 @@ function TokenSigning() { \n\
         for(var i = 0; i < 16; i++) val += hex.charAt(Math.floor(Math.random() * hex.length)); \n\
         return val; \n\
     } \n\
- \n\
     function messagePromise(msg) { \n\
         return new Promise(function(resolve, reject) { \n\
             // amend with necessary metadata \n\
@@ -102,20 +106,16 @@ function TokenSigning() { \n\
         }); \n\
     } \n\
     this.getCertificate = function(options) { \n\
-        var msg = {type: "CERT", lang: options.lang, filter: options.filter}; \n\
         console.log("getCertificate()"); \n\
-        return messagePromise(msg); \n\
+        return messagePromise({type: "CERT", lang: options.lang, filter: options.filter}); \n\
     }; \n\
     this.sign = function(cert, hash, options) { \n\
-        var msg = {type: "SIGN", cert: cert.hex, hash: hash.hex, hashtype: hash.type, lang: options.lang, info: options.info}; \n\
         console.log("sign()"); \n\
-        return messagePromise(msg); \n\
+        return messagePromise({type: "SIGN", cert: cert.hex, hash: hash.hex, hashtype: hash.type, lang: options.lang, info: options.info}); \n\
     }; \n\
     this.getVersion = function() { \n\
         console.log("getVersion()"); \n\
-        return messagePromise({ \n\
-            type: "VERSION" \n\
-        }); \n\
+        return messagePromise({type: "VERSION"}); \n\
     }; \n\
 }';
 

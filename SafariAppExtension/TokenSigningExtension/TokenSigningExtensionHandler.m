@@ -22,6 +22,13 @@
 #import "TokenSigning.h"
 
 static NSMutableDictionary<NSString *, SFSafariPage *> *pages;
+static NSMutableDictionary<NSString *, NSTimer *> *timers;
+
+__attribute__((constructor))
+static void initialize_pages() {
+    pages = [[NSMutableDictionary<NSString *, SFSafariPage *> alloc] init];
+    timers = [[NSMutableDictionary<NSString *, NSTimer *> alloc] init];
+}
 
 @interface TokenSigningExtensionHandler : SFSafariExtensionHandler
 @end
@@ -45,10 +52,9 @@ static NSMutableDictionary<NSString *, SFSafariPage *> *pages;
         BOOL isLaunched = [NSWorkspace.sharedWorkspace launchApplication:path];
         NSLog(@"TokenSigning launchApplication: %d", isLaunched);
     }
-    if (!pages) {
-         pages = [[NSMutableDictionary<NSString *, SFSafariPage *> alloc] init];
-    }
     pages[userInfo[@"nonce"]] = page;
+    timers[userInfo[@"nonce"]] = [NSTimer scheduledTimerWithTimeInterval:5.0 target:self selector:@selector(handleTimerTick:) userInfo:userInfo[@"nonce"] repeats:YES];
+
     [page getPagePropertiesWithCompletionHandler:^(SFSafariPageProperties *properties) {
         NSLog(@"TokenSigning: The extension received a message (%@) from a script injected into (%@) with userInfo (%@)", messageName, properties.url, userInfo);
         if (![messageName isEqualToString:TokenSigningMessage]) {
@@ -65,7 +71,16 @@ static NSMutableDictionary<NSString *, SFSafariPage *> *pages;
     NSLog(@"TokenSigning: The extension received a message (%@) from a application with userInfo (%@)", messageName, userInfo);
     SFSafariPage *page = pages[userInfo[@"nonce"]];
     [pages removeObjectForKey:userInfo[@"nonce"]];
+    [timers[userInfo[@"nonce"]] invalidate];
+    [timers removeObjectForKey:userInfo[@"nonce"]];
     [page dispatchMessageToScriptWithName:messageName userInfo:userInfo];
+}
+
+- (void)handleTimerTick:(NSTimer*)timer
+{
+    NSLog(@"Timer %@", timer.userInfo);
+    SFSafariPage *page = pages[timer.userInfo];
+    [page dispatchMessageToScriptWithName:@"ping" userInfo:timer.userInfo];
 }
 
 @end
